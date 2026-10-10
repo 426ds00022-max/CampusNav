@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Navigator | Shortest Path Finder</title>
+    <!-- Google Fonts for modern typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome for clean, expressive icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="logo-group">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-compass-drafting"></i>
+                </div>
+                <div>
+                    <h1 class="brand-title">Campus Navigator</h1>
+                    <p class="brand-subtitle">Find the shortest path around your campus.</p>
+                </div>
+            </div>
+            <div class="nav-badges">
+                <span class="badge badge-accent"><i class="fa-solid fa-project-diagram"></i> Graph DSA</span>
+                <span class="badge badge-info"><i class="fa-solid fa-route"></i> BFS Algorithm</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-wrapper">
+        <div class="app-grid">
+            
+            <!-- LEFT PANEL: Route Planner and Output -->
+            <section class="card planner-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-map-location-dot"></i> Plan Your Route</h2>
+                    <span class="header-pill">14 Locations</span>
+                </div>
+
+                <form id="route-form" class="route-form">
+                    <!-- Starting Location Dropdown -->
+                    <div class="input-group">
+                        <label for="start-location">
+                            <span class="label-icon start-icon"><i class="fa-solid fa-circle-dot"></i></span>
+                            Start Location
+                        </label>
+                        <div class="select-wrapper">
+                            <select id="start-location" name="start" required>
+                                <option value="" disabled selected>Select starting location...</option>
+                                {% for loc in locations %}
+                                <option value="{{ loc }}">{{ loc }}</option>
+                                {% endfor %}
+                            </select>
+                            <i class="fa-solid fa-chevron-down select-chevron"></i>
+                        </div>
+                    </div>
+
+                    <!-- Swap Button -->
+                    <div class="swap-container">
+                        <button type="button" id="btn-swap" class="btn-swap" title="Swap Start and Destination">
+                            <i class="fa-solid fa-arrow-down-up-across-line"></i>
+                            <span>Swap</span>
+                        </button>
+                    </div>
+
+                    <!-- Destination Dropdown -->
+                    <div class="input-group">
+                        <label for="dest-location">
+                            <span class="label-icon dest-icon"><i class="fa-solid fa-location-dot"></i></span>
+                            Destination
+                        </label>
+                        <div class="select-wrapper">
+                            <select id="dest-location" name="destination" required>
+                                <option value="" disabled selected>Select destination...</option>
+                                {% for loc in locations %}
+                                <option value="{{ loc }}">{{ loc }}</option>
+                                {% endfor %}
+                            </select>
+                            <i class="fa-solid fa-chevron-down select-chevron"></i>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-buttons">
+                        <button type="submit" id="btn-find" class="btn btn-primary">
+                            <i class="fa-solid fa-diamond-turn-right"></i>
+                            <span>Find My Route</span>
+                        </button>
+                        <button type="button" id="btn-reset" class="btn btn-secondary" title="Reset selection">
+                            <i class="fa-solid fa-arrow-rotate-left"></i>
+                            <span>Clear</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Quick Preset Shortcuts -->
+                <div class="presets-section">
+                    <span class="presets-title"><i class="fa-solid fa-bolt"></i> Quick Examples:</span>
+                    <div class="presets-chips">
+                        <button type="button" class="preset-chip" data-start="Library" data-dest="CUS">
+                            Library &rarr; CUS
+                        </button>
+                        <button type="button" class="preset-chip" data-start="Main Gate" data-dest="MRF">
+                            Main Gate &rarr; MRF
+                        </button>
+                        <button type="button" class="preset-chip" data-start="Quadrangle" data-dest="Bishop Heber Hall">
+                            Quadrangle &rarr; Bishop Heber
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Result & Feedback Section -->
+                <div id="results-area" class="results-area">
+                    <!-- Default Placeholder state -->
+                    <div id="result-placeholder" class="result-placeholder">
+                        <div class="placeholder-icon">
+                            <i class="fa-solid fa-signs-post"></i>
+                        </div>
+                        <h3>Ready to Navigate</h3>
+                        <p>Choose your start and destination above or click locations directly on the map to find the shortest BFS path.</p>
+                    </div>
+
+                    <!-- Loading Spinner -->
+                    <div id="result-loading" class="result-loading hidden">
+                        <div class="spinner"></div>
+                        <p>Calculating shortest path via BFS...</p>
+                    </div>
+
+                    <!-- Error Alert -->
+                    <div id="result-error" class="result-error hidden">
+                        <i class="fa-solid fa-triangle-exclamation error-icon"></i>
+                        <div class="error-content">
+                            <h4 id="error-title">Route Error</h4>
+                            <p id="error-message">Unable to calculate route.</p>
+                        </div>
+                    </div>
+
+                    <!-- Route Details Output -->
+                    <div id="result-details" class="result-details hidden">
+                        <div class="stats-row">
+                            <div class="stat-card">
+                                <span class="stat-number" id="stat-connections">0</span>
+                                <span class="stat-label">Connections (Hops)</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-number" id="stat-stops">0</span>
+                                <span class="stat-label">Total Locations</span>
+                            </div>
+                            <div class="stat-card">
+                                <span class="stat-badge">BFS</span>
+                                <span class="stat-label">Shortest by Hops</span>
+                            </div>
+                        </div>
+
+                        <div class="route-timeline-container">
+                            <h4><i class="fa-solid fa-shoe-prints"></i> Turn-by-Turn Path</h4>
+                            <div id="route-timeline" class="route-timeline">
+                                <!-- Steps populated dynamically by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT PANEL: Schematic Campus Map -->
+            <section class="card map-card">
+                <div class="card-header">
+                    <div>
+                        <h2><i class="fa-solid fa-diagram-project"></i> Schematic Campus Map</h2>
+                        <p class="card-subtitle">Click any node to set Start or Destination</p>
+                    </div>
+                    <div class="map-controls">
+                        <button type="button" id="btn-reset-map" class="btn-icon" title="Reset Map View">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Map Legend -->
+                <div class="map-legend">
+                    <span class="legend-item"><span class="legend-dot dot-start"></span> Start</span>
+                    <span class="legend-item"><span class="legend-dot dot-dest"></span> Destination</span>
+                    <span class="legend-item"><span class="legend-dot dot-path"></span> Active Route</span>
+                    <span class="legend-item"><span class="legend-dot dot-default"></span> Campus Location</span>
+                </div>
+
+                <!-- SVG Schematic Map Canvas -->
+                <div class="svg-container" id="svg-wrapper">
+                    <svg id="campus-map" viewBox="0 0 1000 620" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <!-- Ambient glowing filters for active route -->
+                            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                                <feGaussianBlur stdDeviation="3.5" result="blur" />
+                                <feMerge>
+                                    <feMergeNode in="blur" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
+                            </filter>
+                            <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#10b981" />
+                                <stop offset="50%" stop-color="#38bdf8" />
+                                <stop offset="100%" stop-color="#f43f5e" />
+                            </linearGradient>
+                        </defs>
+
+                        <!-- Campus Background Decor -->
+                        <rect x="0" y="0" width="1000" height="620" rx="16" class="map-bg" />
+
+                        <!-- Group for connecting paths (edges) -->
+                        <g id="map-edges" class="edges-layer"></g>
+
+                        <!-- Group for highlighted active path -->
+                        <g id="map-active-edges" class="active-edges-layer"></g>
+
+                        <!-- Group for location pins and labels (nodes) -->
+                        <g id="map-nodes" class="nodes-layer"></g>
+                    </svg>
+                </div>
+
+                <!-- Interactive Map Helper Notice -->
+                <div class="map-footer-hint">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span><strong>Pro Tip:</strong> Click any circle to set your Starting point. Click a second circle to set your Destination!</span>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Educational Section: How it Works for College Viva / Project Presentation -->
+        <section class="card explanation-card">
+            <div class="explanation-grid">
+                <div class="info-box">
+                    <div class="info-icon"><i class="fa-solid fa-network-wired"></i></div>
+                    <h3>1. Graph Representation</h3>
+                    <p>The campus is modeled as an <strong>undirected graph</strong> using a Python dictionary (Adjacency List). Each location is a node, and each physical path is a two-way edge connecting them.</p>
+                </div>
+
+                <div class="info-box">
+                    <div class="info-icon"><i class="fa-solid fa-layer-group"></i></div>
+                    <h3>2. Breadth-First Search (BFS)</h3>
+                    <p>BFS uses a <strong>FIFO Queue</strong> (<code>collections.deque</code>) to explore the campus layer by layer. It is mathematically guaranteed to find the route with the fewest connections.</p>
+                </div>
+
+                <div class="info-box">
+                    <div class="info-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h3>3. Visited Set Tracking</h3>
+                    <p>A Python <code>set</code> tracks all visited locations. This prevents infinite loops, prevents revisiting already explored buildings, and achieves an optimal <strong>O(V + E)</strong> time complexity.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p><strong>Campus Navigator</strong> &bull; Data Structures Project &bull; Built with Python, Flask & BFS</p>
+    </footer>
+
+    <!-- Frontend Script -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
